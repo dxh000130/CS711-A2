@@ -1,0 +1,7 @@
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\CS711_A2.exe
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\CS711_A2.pdb
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.AssemblyReference.cache
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.SuggestedBindingRedirects.cache
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.CoreCompileInputs.cache
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.exe
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.pdb
