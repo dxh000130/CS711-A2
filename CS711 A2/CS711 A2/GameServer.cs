@@ -16,6 +16,16 @@ namespace CS711_A2
     private TcpListener _listener;
     private IPAddress _IP;
     private int _port;
+    private string[] _englishWords = new string[] { "apple", "banana", "orange", "kiwi", "mango", "grape", "pear", "pineapple", "watermelon", "strawberry", 
+        "lemon", "peach", "plum", "avocado", "blueberry", "coconut", "pomegranate", "cherry", "fig", "apricot", 
+        "papaya", "guava", "mangosteen", "dragonfruit", "deer", "lion", "tiger", "giraffe", "elephant", "monkey", 
+        "zebra", "kangaroo", "rhinoceros", "crocodile", "hippopotamus", "panda", "koala", "gorilla", "leopard", 
+        "cheetah", "hyena", "camel", "gazelle", "buffalo", "penguin", "seagull", "dolphin", "shark", "whale", 
+        "jellyfish", "octopus", "seahorse", "starfish", "lobster", "crab", "turtle" };
+
+    private Dictionary<string[], string> _pairDictionary = new Dictionary<string[], string>();
+    private List<string> _usedWords = new List<string>();
+
 
     public GameServer(IPAddress IP, int port)
     {
@@ -89,8 +99,8 @@ namespace CS711_A2
                         }
 
                         Dictionary<string, string> parameters = Parse(queryString);
-                        Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: {method} {path}");
-
+                        //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: {method} {path}");
+                        
                         // Handle GET requests
                         if (method == "GET")
                         {
@@ -105,6 +115,7 @@ namespace CS711_A2
                                     writer.WriteLine();
                                     await writer.FlushAsync();
                                     await stream.WriteAsync(iconBytes, 0, iconBytes.Length);
+                                    
                                 }
                                 catch (FileNotFoundException)
                                 {
@@ -152,6 +163,7 @@ namespace CS711_A2
                                 writer.WriteLine();
                                 writer.WriteLine("Invalid request.");
                             }
+                            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.Client.RemoteEndPoint} for {path}");
                         }
                         // else
                         // {
