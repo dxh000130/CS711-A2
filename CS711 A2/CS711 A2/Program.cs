@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net;
+using System.Threading.Tasks;
 
 namespace CS711_A2
 {
@@ -7,7 +8,7 @@ namespace CS711_A2
         public static async Task Main(string[] args)
         {
             int port = 8080;
-            GameServer server = new GameServer(port);
+            GameServer server = new GameServer(IPAddress.Any, port);
             await server.StartAsync();
         }
     }

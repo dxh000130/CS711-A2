@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,10 +14,15 @@ namespace CS711_A2
     public class GameServer
 {
     private TcpListener _listener;
+    private IPAddress _IP;
+    private int _port;
 
-    public GameServer(int port)
+    public GameServer(IPAddress IP, int port)
     {
-        _listener = new TcpListener(IPAddress.Any, port);
+        _listener = new TcpListener(IP, port);
+        _IP = IP;
+        _port = port;
+
     }
 
     public async Task StartAsync()
@@ -26,11 +32,11 @@ namespace CS711_A2
 
         while (true)
         {
-            TcpClient client = await _listener.AcceptTcpClientAsync();
-            Console.WriteLine("connected with: " + client.Client.RemoteEndPoint);
-            Task clientTask = Task.Run(() => HandleClientAsync(client));
             Console.WriteLine("Game Server Started");
-            
+            Console.WriteLine($"Listening at {_IP}:{_port} ");
+            TcpClient client = await _listener.AcceptTcpClientAsync();
+            Console.WriteLine("Connection established with: " + client.Client.RemoteEndPoint);
+            Task clientTask = Task.Run(() => HandleClientAsync(client));
         }
     }
 
@@ -62,15 +68,15 @@ namespace CS711_A2
                         {
                             requestLine = requestLine.Substring(requestStringIndexPost);
                         }
-                        if (string.IsNullOrEmpty(requestLine))
-                        {
-                            writer.WriteLine("HTTP/1.1 405 Method Not Allowed");
-                            writer.WriteLine("Content-Type: text/plain");
-                            writer.WriteLine();
-                            writer.WriteLine("Method not allowed.");
-                        }
+                        // if (string.IsNullOrEmpty(requestLine))
+                        // {
+                        //     writer.WriteLine("HTTP/1.1 405 Method Not Allowed");
+                        //     writer.WriteLine("Content-Type: text/plain");
+                        //     writer.WriteLine("IsNullOrEmpty");
+                        //     writer.WriteLine("Method not allowed.");
+                        // }
                         
-                        Console.WriteLine($"Thread: {requestLine}");
+                        // Console.WriteLine($"Thread: {requestLine}");
                         string[] tokens = requestLine.Split(' ');
                         string method = tokens[0].ToUpper();
                         string path = tokens[1].ToLower();
@@ -83,14 +89,39 @@ namespace CS711_A2
                         }
 
                         Dictionary<string, string> parameters = Parse(queryString);
-                        Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: {method} {path} {parameters}");
+                        Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId}: {method} {path}");
 
                         // Handle GET requests
                         if (method == "GET")
                         {
+                            if (path.StartsWith("/favicon.ico"))
+                            {
+                                try
+                                {
+                                    byte[] iconBytes = File.ReadAllBytes("../../favicon.ico");
+                                    writer.WriteLine("HTTP/1.1 200 OK");
+                                    writer.WriteLine("Content-Type: image/x-icon");
+                                    writer.WriteLine($"Content-Length: {iconBytes.Length}");
+                                    writer.WriteLine();
+                                    await writer.FlushAsync();
+                                    await stream.WriteAsync(iconBytes, 0, iconBytes.Length);
+                                }
+                                catch (FileNotFoundException)
+                                {
+                                    writer.WriteLine("HTTP/1.1 404 Not Found");
+                                    writer.WriteLine("Content-Type: text/plain");
+                                    writer.WriteLine();
+                                    writer.WriteLine("Favicon not found.");
+                                }
+                            }
                             if (path.StartsWith("/register"))
                             {
                                 Console.WriteLine("register");
+                                //writer.WriteLine("register");
+                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                writer.WriteLine("Content-Type: text/plain");
+                                writer.WriteLine();
+                                writer.WriteLine("register");
                             }
                             else if (path.StartsWith("/pairme"))
                             {
@@ -122,14 +153,14 @@ namespace CS711_A2
                                 writer.WriteLine("Invalid request.");
                             }
                         }
-                        else
-                        {
-                            // Unsupported method
-                            writer.WriteLine("HTTP/1.1 405 Method Not Allowed");
-                            writer.WriteLine("Content-Type: text/plain");
-                            writer.WriteLine();
-                            writer.WriteLine("Method not allowed.");
-                        }
+                        // else
+                        // {
+                        //     // Unsupported method
+                        //     writer.WriteLine("HTTP/1.1 405 Method Not Allowed");
+                        //     writer.WriteLine("Content-Type: text/plain");
+                        //     writer.WriteLine();
+                        //     writer.WriteLine("Method not allowed.");
+                        // }
                     }
                     
                 }
