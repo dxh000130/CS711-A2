@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using System.Threading.Tasks;
 
 namespace CS711_A2
@@ -23,7 +24,7 @@ namespace CS711_A2
         "cheetah", "hyena", "camel", "gazelle", "buffalo", "penguin", "seagull", "dolphin", "shark", "whale", 
         "jellyfish", "octopus", "seahorse", "starfish", "lobster", "crab", "turtle" };
 
-    private Dictionary<string[], Dictionary<string, string>> _pairDictionary = new Dictionary<string[], Dictionary<string, string>>();
+    private List<Dictionary<string, string>> _pairDictionary = new List<Dictionary<string, string>>();
     private List<string> _usedWords = new List<string>();
     private List<string> _waitForPair = new List<string>();
 
@@ -145,12 +146,49 @@ namespace CS711_A2
                                 if (parameters.ContainsKey("player"))
                                 {
                                     string username = parameters["player"];
-                                    if (_waitForPair.Count == 0)
+                                    if (_usedWords.Contains(username))
                                     {
-                                        _waitForPair.Add(username);
-                                        Guid myGuid = Guid.NewGuid();
-                                        _pairDictionary[new string[] { username }] = new Dictionary<string, string> {{"id", myGuid.ToString()}};
+                                        if (_waitForPair.Count == 0)
+                                        {
+                                            
+                                            _waitForPair.Add(username);
+                                            Guid myGuid = Guid.NewGuid();
+                                            Dictionary<string, string> dic = new Dictionary<string, string>
+                                            {
+                                                { "id", myGuid.ToString() }, { "player1", username }, { "player2", "" },
+                                                { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                            };
+                                            _pairDictionary.Add( dic);
+                                            writer.WriteLine("HTTP/1.1 200 Ok");
+                                            writer.WriteLine("Content-Type: application/json");
+                                            writer.WriteLine();
+                                            writer.WriteLine(JsonConvert.SerializeObject(dic));
+                                        }
+                                        else
+                                        {
+                                            string player1 = _waitForPair[0];
+                                            _waitForPair.RemoveAt(0);
+                                            Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && d["player1"] == player1);
+                                            if (foundDictionary != null)
+                                            {
+                                                foundDictionary["player2"] = username;
+                                                foundDictionary["state"] = "progress";
+                                            }
+                                            writer.WriteLine("HTTP/1.1 200 Ok");
+                                            writer.WriteLine("Content-Type: text/plain");
+                                            writer.WriteLine();
+                                            writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
+                                            Console.WriteLine(JsonConvert.SerializeObject(_pairDictionary));
+                                        }
                                     }
+                                    else
+                                    {
+                                        writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine("Wrong username");
+                                    }
+                                    
                                 }
                                 else
                                 {
@@ -175,7 +213,46 @@ namespace CS711_A2
                             else if (path.StartsWith("/quit"))
                             {
                                 Console.WriteLine("quit");
+                                 if (parameters.ContainsKey("player") && parameters.ContainsKey("id"))
+                                {
+                                    string username = parameters["player"];
+                                    string id = parameters["id"];
+                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                    if (foundDictionary != null)
+                                    {
+                                        if (foundDictionary["player1"] == username)
+                                        {
+                                            _waitForPair.Add(foundDictionary["player2"]);
+                                            _usedWords.Remove(foundDictionary["player1"]);
+                                        }else if(foundDictionary["player2"] == username)
+                                        {
+                                            _waitForPair.Add(foundDictionary["player1"]);
+                                            _usedWords.Remove(foundDictionary["player2"]);
+                                        }
 
+                                        _pairDictionary.Remove(foundDictionary);
+                                        writer.WriteLine("HTTP/1.1 200 Ok");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine(JsonConvert.SerializeObject(_waitForPair));
+                                        writer.WriteLine(JsonConvert.SerializeObject(_usedWords));
+                                    }
+                                    else
+                                    {
+                                        writer.WriteLine("HTTP/1.1 404 Not Found");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine("Wrong username or ID");
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                    writer.WriteLine("Content-Type: text/plain");
+                                    writer.WriteLine();
+                                    writer.WriteLine("Please input parameters [player, id]");
+                                }
                             }
                             else
                             {
@@ -187,21 +264,13 @@ namespace CS711_A2
                             }
                             Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.Client.RemoteEndPoint} for {path}");
                         }
-                        // else
-                        // {
-                        //     // Unsupported method
-                        //     writer.WriteLine("HTTP/1.1 405 Method Not Allowed");
-                        //     writer.WriteLine("Content-Type: text/plain");
-                        //     writer.WriteLine();
-                        //     writer.WriteLine("Method not allowed.");
-                        // }
                     }
                     
                 }
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}. Exception: {ex.Message}");
+                //Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}. Exception: {ex.Message}");
             }
             
         }

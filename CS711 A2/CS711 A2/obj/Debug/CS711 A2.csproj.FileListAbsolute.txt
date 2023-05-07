@@ -5,3 +5,6 @@ C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.cs
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.CoreCompileInputs.cache
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.exe
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.pdb
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Newtonsoft.Json.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Newtonsoft.Json.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.CopyComplete
