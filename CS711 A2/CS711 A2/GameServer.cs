@@ -17,10 +17,9 @@ namespace CS711_A2
     private TcpListener _listener;
     private IPAddress _IP;
     private int _port;
+    private static object _multiLock = new object();
     private volatile Dictionary<string, string> currentPlayer = new Dictionary<string, string>();
-    private bool currentPlayerLock = false;
     private volatile Dictionary<string, string> currentGameId = new Dictionary<string, string>();
-    private bool currentGameIdLock = false;
     private string[] _englishWords = new string[] { "apple", "banana", "orange", "kiwi", "mango", "grape", "pear", "pineapple", "watermelon", "strawberry", 
         "lemon", "peach", "plum", "avocado", "blueberry", "coconut", "pomegranate", "cherry", "fig", "apricot", 
         "papaya", "guava", "mangosteen", "dragonfruit", "deer", "lion", "tiger", "giraffe", "elephant", "monkey", 
@@ -29,11 +28,8 @@ namespace CS711_A2
         "jellyfish", "octopus", "seahorse", "starfish", "lobster", "crab", "turtle" };
 
     private volatile List<Dictionary<string, string>> _pairDictionary = new List<Dictionary<string, string>>();
-    private bool _pairDictionaryLock = false;
     private volatile List<string> _usedWords = new List<string>();
-    private bool _usedWordsLock = false;
     private volatile List<string> _waitForPair = new List<string>();
-    private bool _waitForPairLock = false;
 
     public GameServer(IPAddress IP, int port)
     {
@@ -70,73 +66,74 @@ namespace CS711_A2
                     StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
                     while (true)
                     {
-                        Monitor.Enter(currentPlayer, ref currentPlayerLock);
-                        Monitor.Enter(currentGameId, ref currentGameIdLock);
-                        Monitor.Enter(_pairDictionary, ref _pairDictionaryLock);
-                        Monitor.Enter(_usedWords, ref _usedWordsLock);
-                        Monitor.Enter(_waitForPair, ref _waitForPairLock);
                         string requestLine = await reader.ReadLineAsync();
-                        if (requestLine == null)
+                        lock (_multiLock)
                         {
-                            Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
-                            if (currentGameId.ContainsKey(client.Client.RemoteEndPoint.ToString()))
+                            if (requestLine == null)
                             {
-                                Console.WriteLine($"Game ID:{currentGameId[client.Client.RemoteEndPoint.ToString()]} has been end!");
-                            }
-                            Console.WriteLine($"Player:{currentPlayer[client.Client.RemoteEndPoint.ToString()]} has been end!");
-                            Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == currentPlayer[client.Client.RemoteEndPoint.ToString()] || d["player2"] == currentPlayer[client.Client.RemoteEndPoint.ToString()]) && d["id"] == currentGameId[client.Client.RemoteEndPoint.ToString()]);
-                            if (foundDictionary != null)
-                            {
-                                if (foundDictionary["player1"] == currentPlayer[client.Client.RemoteEndPoint.ToString()])
+                                Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
+                                if (currentGameId.ContainsKey(client.Client.RemoteEndPoint.ToString()))
                                 {
-                                    if (foundDictionary["player2"] != "")
-                                    {
-                                        _waitForPair.Add(foundDictionary["player1"]);
-                                        Guid myGuid = Guid.NewGuid();
-                                        Dictionary<string, string> dic = new Dictionary<string, string>
-                                        {
-                                            { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
-                                            { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                        };
-                                        _pairDictionary.Add( dic);
-                                        currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
-                                    }
-                                    _usedWords.Remove(foundDictionary["player1"]);
-                                }
-                                else if (foundDictionary["player2"] == currentPlayer[client.Client.RemoteEndPoint.ToString()])
-                                {
-                                    if (foundDictionary["player1"] != "")
-                                    {
-                                        _waitForPair.Add(foundDictionary["player1"]);
-                                        Guid myGuid = Guid.NewGuid();
-                                        Dictionary<string, string> dic = new Dictionary<string, string>
-                                        {
-                                            { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
-                                            { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                        };
-                                        _pairDictionary.Add( dic);
-                                        currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
-                                    }
-                                    _usedWords.Remove(foundDictionary["player2"]);
+                                    Console.WriteLine($"Game ID:{currentGameId[client.Client.RemoteEndPoint.ToString()]} has been end!");
                                 }
 
-                                _pairDictionary.Remove(foundDictionary);
-                                writer.WriteLine("HTTP/1.1 200 Ok");
-                                writer.WriteLine("Content-Type: text/plain");
-                                writer.WriteLine();
-                            }
-                            else
-                            {
-                                if (_waitForPair.Contains(currentPlayer[client.Client.RemoteEndPoint.ToString()]))
+                                if (currentPlayer.ContainsKey(client.Client.RemoteEndPoint.ToString()))
                                 {
-                                    _waitForPair.Remove(currentPlayer[client.Client.RemoteEndPoint.ToString()]);
+                                    Console.WriteLine($"Player:{currentPlayer[client.Client.RemoteEndPoint.ToString()]} has been end!");
                                 }
-                                
-                                _usedWords.Remove(currentPlayer[client.Client.RemoteEndPoint.ToString()]);
-                            }
+                                Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == currentPlayer[client.Client.RemoteEndPoint.ToString()] || d["player2"] == currentPlayer[client.Client.RemoteEndPoint.ToString()]) && d["id"] == currentGameId[client.Client.RemoteEndPoint.ToString()]);
+                                if (foundDictionary != null)
+                                {
+                                    if (foundDictionary["player1"] == currentPlayer[client.Client.RemoteEndPoint.ToString()])
+                                    {
+                                        if (foundDictionary["player2"] != "")
+                                        {
+                                            _waitForPair.Add(foundDictionary["player1"]);
+                                            Guid myGuid = Guid.NewGuid();
+                                            Dictionary<string, string> dic = new Dictionary<string, string>
+                                            {
+                                                { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
+                                                { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                            };
+                                            _pairDictionary.Add( dic);
+                                            currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                        }
+                                        _usedWords.Remove(foundDictionary["player1"]);
+                                    }
+                                    else if (foundDictionary["player2"] == currentPlayer[client.Client.RemoteEndPoint.ToString()])
+                                    {
+                                        if (foundDictionary["player1"] != "")
+                                        {
+                                            _waitForPair.Add(foundDictionary["player1"]);
+                                            Guid myGuid = Guid.NewGuid();
+                                            Dictionary<string, string> dic = new Dictionary<string, string>
+                                            {
+                                                { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
+                                                { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                            };
+                                            _pairDictionary.Add( dic);
+                                            currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                        }
+                                        _usedWords.Remove(foundDictionary["player2"]);
+                                    }
 
-                            break;
+                                    _pairDictionary.Remove(foundDictionary);
+                                    
+                                }
+                                else
+                                {
+                                    if (_waitForPair.Contains(currentPlayer[client.Client.RemoteEndPoint.ToString()]))
+                                    {
+                                        _waitForPair.Remove(currentPlayer[client.Client.RemoteEndPoint.ToString()]);
+                                    }
+                                    
+                                    _usedWords.Remove(currentPlayer[client.Client.RemoteEndPoint.ToString()]);
+                                }
+
+                                break;
+                            }
                         }
+                        
                         int requestStringIndexGet = requestLine.ToUpper().IndexOf("GET");
                         int requestStringIndexPost = requestLine.ToUpper().IndexOf("POST");
                         if (requestStringIndexGet > 0)
@@ -195,16 +192,20 @@ namespace CS711_A2
                             }
                             if (path.StartsWith("/register"))
                             {
+                                
                                 Random random = new Random();
                                 int randomIndex = random.Next(_englishWords.Length);
                                 string randomUsername = _englishWords[randomIndex];
-                                while (_usedWords.Contains(randomUsername))
+                                lock (_multiLock)
                                 {
-                                    randomIndex = random.Next(_englishWords.Length);
-                                    randomUsername = _englishWords[randomIndex];
+                                    while (_usedWords.Contains(randomUsername))
+                                    {
+                                        randomIndex = random.Next(_englishWords.Length);
+                                        randomUsername = _englishWords[randomIndex];
+                                    }
+                                    _usedWords.Add(randomUsername);
+                                    currentPlayer[client.Client.RemoteEndPoint.ToString()] = randomUsername;
                                 }
-                                _usedWords.Add(randomUsername);
-                                currentPlayer[client.Client.RemoteEndPoint.ToString()] = randomUsername;
                                 writer.WriteLine("HTTP/1.1 200 Ok");
                                 writer.WriteLine("Content-Type: text/plain");
                                 writer.WriteLine();
@@ -217,51 +218,53 @@ namespace CS711_A2
                                     string username = parameters["player"];
                                     if (_usedWords.Contains(username))
                                     {
-                                        //Console.WriteLine(_pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) == null);
-                                        //Console.WriteLine(JsonConvert.SerializeObject(_pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username))));
-                                        if (_waitForPair.Count == 0 && _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) == null)
+                                        lock (_multiLock)
                                         {
-                                            _waitForPair.Add(username);
-                                            Guid myGuid = Guid.NewGuid();
-                                            Dictionary<string, string> dic = new Dictionary<string, string>
+                                            if (_waitForPair.Count == 0 && _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) == null)
                                             {
-                                                { "id", myGuid.ToString() }, { "player1", username }, { "player2", "" },
-                                                { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                            };
-                                            _pairDictionary.Add( dic);
-                                            currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
-                                            writer.WriteLine("HTTP/1.1 200 Ok");
-                                            writer.WriteLine("Content-Type: application/json");
-                                            writer.WriteLine();
-                                            writer.WriteLine(JsonConvert.SerializeObject(dic));
-                                        }else if (_waitForPair.Contains(username) || _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) != null)
-                                        {
-                                            Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username));
-                                            writer.WriteLine("HTTP/1.1 200 Ok");
-                                            writer.WriteLine("Content-Type: text/plain");
-                                            writer.WriteLine();
-                                            writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
-                                        }
-                                        else
-                                        {
-                                            string player1 = _waitForPair[0];
-                                            Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && d["player1"] == player1);
-                                            if (foundDictionary["player2"] == "")
-                                            {
-                                                _waitForPair.RemoveAt(0);
-                                                if (foundDictionary != null)
+                                                _waitForPair.Add(username);
+                                                Guid myGuid = Guid.NewGuid();
+                                                Dictionary<string, string> dic = new Dictionary<string, string>
                                                 {
-                                                    foundDictionary["player2"] = username;
-                                                    foundDictionary["state"] = "progress";
-                                                }
+                                                    { "id", myGuid.ToString() }, { "player1", username }, { "player2", "" },
+                                                    { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                                };
+                                                _pairDictionary.Add( dic);
+                                                currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                                writer.WriteLine("Content-Type: application/json");
+                                                writer.WriteLine();
+                                                writer.WriteLine(JsonConvert.SerializeObject(dic));
+                                            }else if (_waitForPair.Contains(username) || _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) != null)
+                                            {
+                                                Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username));
+                                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
+                                                writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
                                             }
-                                            
-                                            writer.WriteLine("HTTP/1.1 200 Ok");
-                                            writer.WriteLine("Content-Type: text/plain");
-                                            writer.WriteLine();
-                                            writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
-                                            currentGameId[client.Client.RemoteEndPoint.ToString()] = foundDictionary["id"];
+                                            else
+                                            {
+                                                string player1 = _waitForPair[0];
+                                                Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && d["player1"] == player1);
+                                                if (foundDictionary["player2"] == "")
+                                                {
+                                                    _waitForPair.RemoveAt(0);
+                                                    if (foundDictionary != null)
+                                                    {
+                                                        foundDictionary["player2"] = username;
+                                                        foundDictionary["state"] = "progress";
+                                                    }
+                                                }
+                                                
+                                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
+                                                writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
+                                                currentGameId[client.Client.RemoteEndPoint.ToString()] = foundDictionary["id"];
+                                            }
                                         }
+
                                     }
                                     else
                                     {
@@ -290,39 +293,42 @@ namespace CS711_A2
                                     string username = parameters["player"];
                                     string id = parameters["id"];
                                     string move = parameters["move"];
-                                    
-                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    if (foundDictionary != null)
+                                    lock (_multiLock)
                                     {
-                                        if (foundDictionary["state"] == "progress")
+                                        Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                        if (foundDictionary != null)
                                         {
-                                            Console.WriteLine(move);
-                                            if (foundDictionary["player1"] == username)
+                                            if (foundDictionary["state"] == "progress")
                                             {
-                                                foundDictionary["lastMovePlayer1"] = move;
-                                            }else if(foundDictionary["player2"] == username)
-                                            {
-                                                foundDictionary["lastMovePlayer2"] = move;
+                                                Console.WriteLine(move);
+                                                if (foundDictionary["player1"] == username)
+                                                {
+                                                    foundDictionary["lastMovePlayer1"] = move;
+                                                }else if(foundDictionary["player2"] == username)
+                                                {
+                                                    foundDictionary["lastMovePlayer2"] = move;
+                                                }
+                                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
                                             }
-                                            writer.WriteLine("HTTP/1.1 200 Ok");
-                                            writer.WriteLine("Content-Type: text/plain");
-                                            writer.WriteLine();
+                                            else
+                                            {
+                                                writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
+                                                writer.WriteLine("Game not start!");  
+                                            }
                                         }
                                         else
                                         {
-                                            writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                            writer.WriteLine("HTTP/1.1 404 Not Found");
                                             writer.WriteLine("Content-Type: text/plain");
                                             writer.WriteLine();
-                                            writer.WriteLine("Game not start!");  
+                                            writer.WriteLine("Wrong username or ID");
                                         }
                                     }
-                                    else
-                                    {
-                                        writer.WriteLine("HTTP/1.1 404 Not Found");
-                                        writer.WriteLine("Content-Type: text/plain");
-                                        writer.WriteLine();
-                                        writer.WriteLine("Wrong username or ID");
-                                    }
+                                    
                                     
                                 }
                                 else
@@ -341,40 +347,42 @@ namespace CS711_A2
                                     string username = parameters["player"];
                                     string id = parameters["id"];
                                     string move="";
-                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    if (foundDictionary != null)
+                                    lock (_multiLock)
                                     {
-                                        if (foundDictionary["state"] == "progress")
+                                        Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                        if (foundDictionary != null)
                                         {
-                                            if (foundDictionary["player1"] == username)
+                                            if (foundDictionary["state"] == "progress")
                                             {
-                                                move = foundDictionary["lastMovePlayer2"];
-                                            }else if(foundDictionary["player2"] == username)
-                                            {
-                                                move = foundDictionary["lastMovePlayer1"];
+                                                if (foundDictionary["player1"] == username)
+                                                {
+                                                    move = foundDictionary["lastMovePlayer2"];
+                                                }else if(foundDictionary["player2"] == username)
+                                                {
+                                                    move = foundDictionary["lastMovePlayer1"];
+                                                }
+                                                Console.WriteLine(move);
+                                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
+                                                writer.WriteLine(move);
                                             }
-                                            Console.WriteLine(move);
-                                            writer.WriteLine("HTTP/1.1 200 Ok");
-                                            writer.WriteLine("Content-Type: text/plain");
-                                            writer.WriteLine();
-                                            writer.WriteLine(move);
+                                            else
+                                            {
+                                                writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                                writer.WriteLine("Content-Type: text/plain");
+                                                writer.WriteLine();
+                                                writer.WriteLine("Game not start!");  
+                                            }
                                         }
                                         else
                                         {
-                                            writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                            writer.WriteLine("HTTP/1.1 404 Not Found");
                                             writer.WriteLine("Content-Type: text/plain");
                                             writer.WriteLine();
-                                            writer.WriteLine("Game not start!");  
+                                            writer.WriteLine("Wrong username or ID");
                                         }
                                     }
-                                    else
-                                    {
-                                        writer.WriteLine("HTTP/1.1 404 Not Found");
-                                        writer.WriteLine("Content-Type: text/plain");
-                                        writer.WriteLine();
-                                        writer.WriteLine("Wrong username or ID");
-                                    }
-                                    
                                 }
                                 else
                                 {
@@ -391,59 +399,61 @@ namespace CS711_A2
                                 {
                                     string username = parameters["player"];
                                     string id = parameters["id"];
-                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                    lock (_multiLock)
+                                    {
+                                        Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
                                     if (foundDictionary != null)
                                     {
                                         if (foundDictionary["player1"] == username)
-                                        {
-                                            if (foundDictionary["player2"] != "")
                                             {
-                                                _waitForPair.Add(foundDictionary["player2"]);
-                                                Guid myGuid = Guid.NewGuid();
-                                                Dictionary<string, string> dic = new Dictionary<string, string>
+                                                if (foundDictionary["player2"] != "")
                                                 {
-                                                    { "id", myGuid.ToString() }, { "player1", foundDictionary["player2"] }, { "player2", "" },
-                                                    { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                                };
-                                                _pairDictionary.Add( dic);
-                                                currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
-                                            }
-                                            _usedWords.Remove(foundDictionary["player1"]);
-                                        }else if(foundDictionary["player2"] == username)
-                                        {
-                                            if (foundDictionary["player1"] != "")
+                                                    _waitForPair.Add(foundDictionary["player2"]);
+                                                    Guid myGuid = Guid.NewGuid();
+                                                    Dictionary<string, string> dic = new Dictionary<string, string>
+                                                    {
+                                                        { "id", myGuid.ToString() }, { "player1", foundDictionary["player2"] }, { "player2", "" },
+                                                        { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                                    };
+                                                    _pairDictionary.Add( dic);
+                                                    currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                                }
+                                                _usedWords.Remove(foundDictionary["player1"]);
+                                            }else if(foundDictionary["player2"] == username)
                                             {
-                                                _waitForPair.Add(foundDictionary["player1"]);
-                                                Guid myGuid = Guid.NewGuid();
-                                                Dictionary<string, string> dic = new Dictionary<string, string>
+                                                if (foundDictionary["player1"] != "")
                                                 {
-                                                    { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
-                                                    { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                                };
-                                                _pairDictionary.Add( dic);
-                                                currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                                    _waitForPair.Add(foundDictionary["player1"]);
+                                                    Guid myGuid = Guid.NewGuid();
+                                                    Dictionary<string, string> dic = new Dictionary<string, string>
+                                                    {
+                                                        { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
+                                                        { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                                    };
+                                                    _pairDictionary.Add( dic);
+                                                    currentGameId[client.Client.RemoteEndPoint.ToString()] = myGuid.ToString();
+                                                }
+                                                _usedWords.Remove(foundDictionary["player2"]);
                                             }
-                                            _usedWords.Remove(foundDictionary["player2"]);
-                                        }
 
-                                        _pairDictionary.Remove(foundDictionary);
-                                        Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
-                                        Console.WriteLine($"Game ID:{id} has been end!");
-                                        Console.WriteLine($"Player:{username} has been end!");
-                                        writer.WriteLine("HTTP/1.1 200 Ok");
-                                        writer.WriteLine("Content-Type: text/plain");
-                                        writer.WriteLine($"Game ID:{id} has been end!");
-                                        writer.WriteLine($"Player:{username} has been end!");
-                                        break;
+                                            _pairDictionary.Remove(foundDictionary);
+                                            Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
+                                            Console.WriteLine($"Game ID:{id} has been end!");
+                                            Console.WriteLine($"Player:{username} has been end!");
+                                            writer.WriteLine("HTTP/1.1 200 Ok");
+                                            writer.WriteLine("Content-Type: text/plain");
+                                            writer.WriteLine($"Game ID:{id} has been end!");
+                                            writer.WriteLine($"Player:{username} has been end!");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            writer.WriteLine("HTTP/1.1 404 Not Found");
+                                            writer.WriteLine("Content-Type: text/plain");
+                                            writer.WriteLine();
+                                            writer.WriteLine("Wrong username or ID");
+                                        }
                                     }
-                                    else
-                                    {
-                                        writer.WriteLine("HTTP/1.1 404 Not Found");
-                                        writer.WriteLine("Content-Type: text/plain");
-                                        writer.WriteLine();
-                                        writer.WriteLine("Wrong username or ID");
-                                    }
-                                    
                                 }
                                 else
                                 {
@@ -463,11 +473,6 @@ namespace CS711_A2
                             }
                             Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.Client.RemoteEndPoint} for {path}");
                         }
-                        Monitor.Exit(currentPlayer);
-                        Monitor.Exit(currentGameId);
-                        Monitor.Exit(_pairDictionary);
-                        Monitor.Exit(_usedWords);
-                        Monitor.Exit(_waitForPair);
                     }
                     
                 }
