@@ -17,8 +17,10 @@ namespace CS711_A2
     private TcpListener _listener;
     private IPAddress _IP;
     private int _port;
-    private Dictionary<string, string> currentPlayer = new Dictionary<string, string>();
-    private Dictionary<string, string> currentGameId = new Dictionary<string, string>();
+    private volatile Dictionary<string, string> currentPlayer = new Dictionary<string, string>();
+    private bool currentPlayerLock = false;
+    private volatile Dictionary<string, string> currentGameId = new Dictionary<string, string>();
+    private bool currentGameIdLock = false;
     private string[] _englishWords = new string[] { "apple", "banana", "orange", "kiwi", "mango", "grape", "pear", "pineapple", "watermelon", "strawberry", 
         "lemon", "peach", "plum", "avocado", "blueberry", "coconut", "pomegranate", "cherry", "fig", "apricot", 
         "papaya", "guava", "mangosteen", "dragonfruit", "deer", "lion", "tiger", "giraffe", "elephant", "monkey", 
@@ -26,9 +28,12 @@ namespace CS711_A2
         "cheetah", "hyena", "camel", "gazelle", "buffalo", "penguin", "seagull", "dolphin", "shark", "whale", 
         "jellyfish", "octopus", "seahorse", "starfish", "lobster", "crab", "turtle" };
 
-    private List<Dictionary<string, string>> _pairDictionary = new List<Dictionary<string, string>>();
-    private List<string> _usedWords = new List<string>();
-    private List<string> _waitForPair = new List<string>();
+    private volatile List<Dictionary<string, string>> _pairDictionary = new List<Dictionary<string, string>>();
+    private bool _pairDictionaryLock = false;
+    private volatile List<string> _usedWords = new List<string>();
+    private bool _usedWordsLock = false;
+    private volatile List<string> _waitForPair = new List<string>();
+    private bool _waitForPairLock = false;
 
     public GameServer(IPAddress IP, int port)
     {
@@ -47,7 +52,7 @@ namespace CS711_A2
         while (true)
         {
             TcpClient client = await _listener.AcceptTcpClientAsync();
-            Console.WriteLine("Connection established with: " + client.Client.RemoteEndPoint);
+            
             Task clientTask = Task.Run(() => HandleClientAsync(client));
         }
     }
@@ -58,13 +63,18 @@ namespace CS711_A2
         {
             try
             {
+                Console.WriteLine("Connection established with: " + client.Client.RemoteEndPoint);
                 using (NetworkStream stream = client.GetStream())
                 {
                     StreamReader reader = new StreamReader(stream);
                     StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
                     while (true)
                     {
-
+                        Monitor.Enter(currentPlayer, ref currentPlayerLock);
+                        Monitor.Enter(currentGameId, ref currentGameIdLock);
+                        Monitor.Enter(_pairDictionary, ref _pairDictionaryLock);
+                        Monitor.Enter(_usedWords, ref _usedWordsLock);
+                        Monitor.Enter(_waitForPair, ref _waitForPairLock);
                         string requestLine = await reader.ReadLineAsync();
                         if (requestLine == null)
                         {
@@ -453,12 +463,18 @@ namespace CS711_A2
                             }
                             Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.Client.RemoteEndPoint} for {path}");
                         }
+                        Monitor.Exit(currentPlayer);
+                        Monitor.Exit(currentGameId);
+                        Monitor.Exit(_pairDictionary);
+                        Monitor.Exit(_usedWords);
+                        Monitor.Exit(_waitForPair);
                     }
                     
                 }
             }
-            catch (IOException ex)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 //Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}. Exception: {ex.Message}");
             }
             
