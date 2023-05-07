@@ -23,16 +23,15 @@ namespace CS711_A2
         "cheetah", "hyena", "camel", "gazelle", "buffalo", "penguin", "seagull", "dolphin", "shark", "whale", 
         "jellyfish", "octopus", "seahorse", "starfish", "lobster", "crab", "turtle" };
 
-    private Dictionary<string[], string> _pairDictionary = new Dictionary<string[], string>();
+    private Dictionary<string[], Dictionary<string, string>> _pairDictionary = new Dictionary<string[], Dictionary<string, string>>();
     private List<string> _usedWords = new List<string>();
-
+    private List<string> _waitForPair = new List<string>();
 
     public GameServer(IPAddress IP, int port)
     {
         _listener = new TcpListener(IP, port);
         _IP = IP;
         _port = port;
-
     }
 
     public async Task StartAsync()
@@ -127,18 +126,41 @@ namespace CS711_A2
                             }
                             if (path.StartsWith("/register"))
                             {
-                                Console.WriteLine("register");
-                                //writer.WriteLine("register");
+                                Random random = new Random();
+                                int randomIndex = random.Next(_englishWords.Length);
+                                string randomUsername = _englishWords[randomIndex];
+                                while (_usedWords.Contains(randomUsername))
+                                {
+                                    randomIndex = random.Next(_englishWords.Length);
+                                    randomUsername = _englishWords[randomIndex];
+                                }
+                                _usedWords.Add(randomUsername);
                                 writer.WriteLine("HTTP/1.1 200 Ok");
                                 writer.WriteLine("Content-Type: text/plain");
                                 writer.WriteLine();
-                                writer.WriteLine("register");
+                                writer.WriteLine(randomUsername);
                             }
                             else if (path.StartsWith("/pairme"))
                             {
-                                Console.WriteLine("pairme");
-                                parameters.TryGetValue("player", out string username);
-                                Console.WriteLine(username);
+                                if (parameters.ContainsKey("player"))
+                                {
+                                    string username = parameters["player"];
+                                    if (_waitForPair.Count == 0)
+                                    {
+                                        _waitForPair.Add(username);
+                                        Guid myGuid = Guid.NewGuid();
+                                        _pairDictionary[new string[] { username }] = new Dictionary<string, string> {{"id", myGuid.ToString()}};
+                                    }
+                                }
+                                else
+                                {
+                                    writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                    writer.WriteLine("Content-Type: text/plain");
+                                    writer.WriteLine();
+                                    writer.WriteLine("Please input parameters [player]");
+                                }
+
+                                //Console.WriteLine(username);
 
                             }
                             else if (path.StartsWith("/mymove"))
