@@ -62,11 +62,32 @@ namespace CS711_A2
                     StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
                     while (true)
                     {
-                        
+                        string currentPlayer = "";
+                        string currentGameId = "";
                         string requestLine = await reader.ReadLineAsync();
                         if (requestLine == null)
                         {
                             Console.WriteLine($"Client disconnected: {client.Client.RemoteEndPoint}");
+                            Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == currentPlayer || d["player2"] == currentPlayer) && d["id"] == currentGameId);
+                            if (foundDictionary != null)
+                            {
+                                if (foundDictionary["player1"] == currentPlayer)
+                                {
+                                    _waitForPair.Add(foundDictionary["player2"]);
+                                    _usedWords.Remove(foundDictionary["player1"]);
+                                }
+                                else if (foundDictionary["player2"] == currentPlayer)
+                                {
+                                    _waitForPair.Add(foundDictionary["player1"]);
+                                    _usedWords.Remove(foundDictionary["player2"]);
+                                }
+
+                                _pairDictionary.Remove(foundDictionary);
+                                writer.WriteLine("HTTP/1.1 200 Ok");
+                                writer.WriteLine("Content-Type: text/plain");
+                                writer.WriteLine();
+                            }
+
                             break;
                         }
                         int requestStringIndexGet = requestLine.ToUpper().IndexOf("GET");
@@ -136,6 +157,7 @@ namespace CS711_A2
                                     randomUsername = _englishWords[randomIndex];
                                 }
                                 _usedWords.Add(randomUsername);
+                                currentPlayer = randomUsername;
                                 writer.WriteLine("HTTP/1.1 200 Ok");
                                 writer.WriteLine("Content-Type: text/plain");
                                 writer.WriteLine();
@@ -159,6 +181,7 @@ namespace CS711_A2
                                                 { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
                                             };
                                             _pairDictionary.Add( dic);
+                                            currentGameId = myGuid.ToString();
                                             writer.WriteLine("HTTP/1.1 200 Ok");
                                             writer.WriteLine("Content-Type: application/json");
                                             writer.WriteLine();
@@ -178,6 +201,7 @@ namespace CS711_A2
                                             writer.WriteLine("Content-Type: text/plain");
                                             writer.WriteLine();
                                             writer.WriteLine(JsonConvert.SerializeObject(foundDictionary));
+                                            currentGameId = foundDictionary["id"];
                                             Console.WriteLine(JsonConvert.SerializeObject(_pairDictionary));
                                         }
                                     }
@@ -203,17 +227,88 @@ namespace CS711_A2
                             }
                             else if (path.StartsWith("/mymove"))
                             {
-                                Console.WriteLine("mymove");
+                                if (parameters.ContainsKey("player") && parameters.ContainsKey("id") && parameters.ContainsKey("move"))
+                                {
+                                    string username = parameters["player"];
+                                    string id = parameters["id"];
+                                    string move = parameters["move"];
+                                    
+                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                    if (foundDictionary != null)
+                                    {
+                                        Console.WriteLine(move);
+                                        if (foundDictionary["player1"] == username)
+                                        {
+                                            foundDictionary["lastMovePlayer1"] = move;
+                                        }else if(foundDictionary["player2"] == username)
+                                        {
+                                            foundDictionary["lastMovePlayer2"] = move;
+                                        }
+                                        writer.WriteLine("HTTP/1.1 200 Ok");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                    }
+                                    else
+                                    {
+                                        writer.WriteLine("HTTP/1.1 404 Not Found");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine("Wrong username or ID");
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                    writer.WriteLine("Content-Type: text/plain");
+                                    writer.WriteLine();
+                                    writer.WriteLine("Please input parameters [player, id, move]");
+                                }
                             }
                             else if (path.StartsWith("/theirmove"))
                             {
-                                Console.WriteLine("theirmove");
+                                if (parameters.ContainsKey("player") && parameters.ContainsKey("id"))
+                                {
+                                    string username = parameters["player"];
+                                    string id = parameters["id"];
+                                    string move="";
+                                    Dictionary<string, string> foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && (d["player1"] == username || d["player2"] == username) && d["id"] == id);
+                                    if (foundDictionary != null)
+                                    {
+                                        if (foundDictionary["player1"] == username)
+                                        {
+                                            move = foundDictionary["lastMovePlayer2"];
+                                        }else if(foundDictionary["player2"] == username)
+                                        {
+                                            move = foundDictionary["lastMovePlayer1"];
+                                        }
+                                        Console.WriteLine(move);
+                                        writer.WriteLine("HTTP/1.1 200 Ok");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine(move);
+                                    }
+                                    else
+                                    {
+                                        writer.WriteLine("HTTP/1.1 404 Not Found");
+                                        writer.WriteLine("Content-Type: text/plain");
+                                        writer.WriteLine();
+                                        writer.WriteLine("Wrong username or ID");
+                                    }
+                                    
+                                }
+                                else
+                                {
+                                    writer.WriteLine("HTTP/1.1 400 Bad Request");
+                                    writer.WriteLine("Content-Type: text/plain");
+                                    writer.WriteLine();
+                                    writer.WriteLine("Please input parameters [player, id]");
+                                }
 
                             }
                             else if (path.StartsWith("/quit"))
                             {
-                                Console.WriteLine("quit");
-                                 if (parameters.ContainsKey("player") && parameters.ContainsKey("id"))
+                                if (parameters.ContainsKey("player") && parameters.ContainsKey("id"))
                                 {
                                     string username = parameters["player"];
                                     string id = parameters["id"];
@@ -234,8 +329,6 @@ namespace CS711_A2
                                         writer.WriteLine("HTTP/1.1 200 Ok");
                                         writer.WriteLine("Content-Type: text/plain");
                                         writer.WriteLine();
-                                        writer.WriteLine(JsonConvert.SerializeObject(_waitForPair));
-                                        writer.WriteLine(JsonConvert.SerializeObject(_usedWords));
                                     }
                                     else
                                     {
