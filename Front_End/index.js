@@ -2,9 +2,9 @@ const board = document.getElementById("chess-board");
 let _username;
 let _gameId;
 let _pairCheck = false;
-let _pauseGetTheirMove = false;
 let _Player = ""
 let _Dargava;
+let _lastTime;
 function drawBoard() {
     const initialSetup = [
         ["Rb", "Nb", "Bb", "Qb", "Kb", "Bb", "Nb", "Rb"],
@@ -62,7 +62,6 @@ function onDrop(event) {
             targetCell.innerHTML = "";
             targetCell.appendChild(piece);
             sendMyMove();
-            _pauseGetTheirMove = true;
         }
     }
 }
@@ -122,7 +121,7 @@ function sendMyMove() {
         _Dargava = false;
         document.getElementById("theirMove").style.backgroundColor='green'
         if(_Player.toUpperCase() === "P1"){
-            document.getElementById("status").innerText = "You are Player1, your chess pieces are black, Player2 go, wait for Player2!";
+            document.getElementById("status").innerText = "You are Player1, your chess pieces are white, Player2 go, wait for Player2!";
         }else {
             document.getElementById("status").innerText = "You are Player2, your chess pieces are black, Player1 go, wait for Player2!";
         }
@@ -136,14 +135,18 @@ function sendMyMove() {
                 rowData.push(piece ? piece.id : null);
             }
             boardState.push(rowData);
-            document.getElementById("message").innerText="Move has been send!"
-            setTimeout(function() {
-                document.getElementById("message").innerText=""
-            }, 3000);
+
         }
+        const now = new Date();
+        boardState.push(now)
         fetch(`http://localhost:8080/mymove?player=${_username}&id=${_gameId}&move=${JSON.stringify(boardState)}`)
             .then(response => response.text())
-            .then()
+            .then(text => {
+                document.getElementById("message").innerText="Move has been send!"
+                setTimeout(function() {
+                    document.getElementById("message").innerText=""
+                }, 3000);
+            })
             .catch(error => {
                 console.error(error);
             });
@@ -155,38 +158,48 @@ function sendMyMove() {
 
 function getTheirMove() {
     if(_username && _gameId){
-        fetch(`http://localhost:8080/theirmove?player=${_username}&id=${_gameId}`)
-            .then(response => response.text())
-            .then(boardState => {
-                if (boardState !== ""){
-                    _Dargava = true;
-                    if(_Player.toUpperCase() === "P1"){
-                        document.getElementById("status").innerText = "You are Player1, your chess pieces are black, your go!";
-                    }else {
-                        document.getElementById("status").innerText = "You are Player2, your chess pieces are black, your go!";
-                    }
+        if (!_Dargava){
+            fetch(`http://localhost:8080/theirmove?player=${_username}&id=${_gameId}`)
+                .then(response => response.text())
+                .then(boardState => {
+                    if (boardState !== ""){
+                        boardState = JSON.parse(boardState);
+                        const time = boardState.pop();
+                        if (time !== _lastTime){
+                            _lastTime = time;
+                            document.getElementById("theirMove").style.backgroundColor='#f0f0f0'
+                            _Dargava = true;
+                            if(_Player.toUpperCase() === "P1"){
+                                document.getElementById("status").innerText = "You are Player1, your chess pieces are white, your go!";
+                            }else {
+                                document.getElementById("status").innerText = "You are Player2, your chess pieces are black, your go!";
+                            }
 
-                    boardState = JSON.parse(boardState);
-                    const board = document.getElementById('chess-board');
-                    board.innerHTML = '';
-                    for (let row = 0; row < 8; row++) {
-                        for (let col = 0; col < 8; col++) {
-                            const pieceId = boardState[row][col];
-                            board.innerHTML += `
+
+                            const board = document.getElementById('chess-board');
+                            board.innerHTML = '';
+                            for (let row = 0; row < 8; row++) {
+                                for (let col = 0; col < 8; col++) {
+                                    const pieceId = boardState[row][col];
+                                    board.innerHTML += `
                         <div class="${((row + col) % 2 === 0 ? 'chess-cell light' : 'chess-cell dark')}" id="${row}-${col}" ondragover="onDragOver(event)" ondrop="onDrop(event)">
                         ${(pieceId ? `
                         <div class="chess-piece" id="${pieceId}" draggable="true" style="background-image: url(https://cws.auckland.ac.nz/gas/images/${pieceId.slice(0, 2)}.svg)" ondragstart="onDragStart(event)"></div>
                         ` : '')}
                         </div>
                         `;
+                                }
+                            }
                         }
-                    }
-                }
 
-            })
-            .catch(error => {
-                console.log(error);
-            });
+                    }
+
+                })
+                .catch(error => {
+                    console.log(error);
+                });
+        }
+
     }else {
         alert("Please pair game first!")
     }
@@ -237,7 +250,6 @@ function quit() {
                 _username=null;
                 _gameId=null;
                 _pairCheck = false;
-                _pauseGetTheirMove = false;
                 _Player = ""
                 _Dargava=null;
             })
@@ -256,8 +268,8 @@ setInterval(function() {
     if(_pairCheck){
         pairMe();
     }
-    // if(_gameId && !_pauseGetTheirMove){
-    //     getTheirMove();
-    // }
+    if(_gameId){
+        getTheirMove();
+    }
 }, 1000);
 

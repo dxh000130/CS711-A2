@@ -41,7 +41,7 @@ namespace CS711_A2
     public async Task StartAsync()
     {
         _listener.Bind(new IPEndPoint(_IP, _port));
-        _listener.Listen(10);
+        _listener.Listen(100);
         Console.WriteLine("Game Server Starting");
         Console.WriteLine("Game Server Started");
         Console.WriteLine($"Listening at {_IP}:{_port} ");
