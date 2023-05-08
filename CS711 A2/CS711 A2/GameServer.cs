@@ -143,11 +143,13 @@ namespace CS711_A2
                 {
                     StreamReader reader = new StreamReader(stream);
                     StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
-                    Timer timer = new Timer(CloseConnection, client, TimeSpan.FromSeconds(60), TimeSpan.Zero);
+                    Timer timer = new Timer(CloseConnection, client, TimeSpan.FromSeconds(600), TimeSpan.Zero);
 
                     while (true)
                     {
-                        
+                        // writer.WriteLine("Access-Control-Allow-Origin: *");
+                        // writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+                        // writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
                         string requestLine = await reader.ReadLineAsync();
                         
                         if (requestLine == null)
@@ -156,7 +158,7 @@ namespace CS711_A2
                         }
                         else
                         {
-                            timer.Change(TimeSpan.FromSeconds(30), TimeSpan.Zero);
+                            timer.Change(TimeSpan.FromSeconds(300), TimeSpan.Zero);
                         }
                         
                         int requestStringIndexGet = requestLine.ToUpper().IndexOf("GET");
@@ -191,6 +193,16 @@ namespace CS711_A2
                         // Handle GET requests
                         if (method == "GET")
                         {
+                            if (path.StartsWith("/debug"))
+                            {
+                                DateTime currentTime = DateTime.Now;
+                                string re = $"Client: {client.RemoteEndPoint.ToString()} ({currentTime.ToString()})";
+                                await sendMessage(200, re, writer, stream);
+                            }
+                            if (path.StartsWith("/version"))
+                            {
+                                await sendMessage(200, "08/05/2023", writer, stream);
+                            }
                             if (path.StartsWith("/favicon.ico"))
                             {
                                 try
@@ -198,6 +210,9 @@ namespace CS711_A2
                                     byte[] iconBytes = File.ReadAllBytes("../../favicon.ico");
                                     writer.WriteLine("HTTP/1.1 200 OK");
                                     writer.WriteLine("Content-Type: image/x-icon");
+                                    writer.WriteLine("Access-Control-Allow-Origin: *");
+                                    writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+                                    writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
                                     writer.WriteLine($"Content-Length: {iconBytes.Length}");
                                     writer.WriteLine();
                                     await writer.FlushAsync();
@@ -298,6 +313,7 @@ namespace CS711_A2
                             }
                             else if (path.StartsWith("/mymove"))
                             {
+                                Console.WriteLine(JsonConvert.SerializeObject(parameters));
                                 if (parameters.ContainsKey("player") && parameters.ContainsKey("id") && parameters.ContainsKey("move"))
                                 {
                                     string username = parameters["player"];
@@ -495,19 +511,21 @@ namespace CS711_A2
         string[] pairs = queryString.Split('&');
         foreach (string pair in pairs)
         {
-            string[] keyValue = pair.Split('=');
-
-            if (keyValue.Length == 2)
+            int equalSignIndex = pair.IndexOf('=');
+            if (equalSignIndex < 0)
             {
-                string key = Uri.UnescapeDataString(keyValue[0]);
-                string value = Uri.UnescapeDataString(keyValue[1]);
-
-                parameters[key] = value;
+                continue; // Skip invalid pair
             }
+
+            string key = Uri.UnescapeDataString(pair.Substring(0, equalSignIndex));
+            string value = Uri.UnescapeDataString(pair.Substring(equalSignIndex + 1));
+
+            parameters[key] = value;
         }
 
         return parameters;
     }
+
 
     public async Task<int> sendMessage(int code, string state, StreamWriter writer, NetworkStream stream)
     {
@@ -515,6 +533,9 @@ namespace CS711_A2
         if (code == 200)
         {
             writer.WriteLine("HTTP/1.1 200 Ok");
+            writer.WriteLine("Access-Control-Allow-Origin: *");
+            writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+            writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
             writer.WriteLine("Content-Type: text/plain; charset=utf-8");
             writer.WriteLine("Content-Length: " + responseBodyBytes.Length);
             writer.WriteLine();
@@ -524,6 +545,9 @@ namespace CS711_A2
         }else if (code == 400)
         {
             writer.WriteLine("HTTP/1.1 400 Bad Request");
+            writer.WriteLine("Access-Control-Allow-Origin: *");
+            writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+            writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
             writer.WriteLine("Content-Type: text/plain; charset=utf-8");
             writer.WriteLine("Content-Length: " + responseBodyBytes.Length);
             writer.WriteLine();
@@ -534,6 +558,9 @@ namespace CS711_A2
         {
             
             writer.WriteLine("HTTP/1.1 404 Not Found");
+            writer.WriteLine("Access-Control-Allow-Origin: *");
+            writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+            writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
             writer.WriteLine("Content-Type: text/plain; charset=utf-8");
             writer.WriteLine("Content-Length: " + responseBodyBytes.Length);
             writer.WriteLine();

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess UI</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<div id="container">
+    <div id="chess-board"></div>
+    <div style="margin-top: 10px">
+        <button style="width: 200px; height: 50px; font-size: larger" id="getUsername" onclick="getUsername()">Get Username</button>
+        <button style="width: 130px; height: 50px; font-size: larger" id="pairMe" onclick="pairMe()">Pair</button>
+        <button style="width: 130px; height: 50px; font-size: larger" id="myMove" onclick="sendMyMove()">My Move</button>
+        <button style="width: 130px; height: 50px; font-size: larger" id="theirMove" onclick="getTheirMove()">Their Move</button>
+        <button style="width: 130px; height: 50px; font-size: larger" id="quit" onclick="quit()">Quit</button>
+    </div>
+    <p id="username" style="font-size: xx-large"></p>
+    <p id="status" style="font-size: xx-large"></p>
+    <p id="message" style="font-size: x-large"></p>
+    <p id="debug" style="font-size: larger"></p>
+    <p id="version" style="font-size: large"></p>
+</div>
+<script src="index.js"></script>
+</body>
+</html>
