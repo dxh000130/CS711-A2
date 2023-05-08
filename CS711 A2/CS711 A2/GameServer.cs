@@ -249,60 +249,80 @@ namespace CS711_A2
                                 if (parameters.ContainsKey("player"))
                                 {
                                     string username = parameters["player"];
-                                    if (_usedWords.Contains(username))
+                                    lock (_multiLock)
                                     {
-                                        
-                                        if (_waitForPair.Count == 0 && _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) == null)
+                                        if (_usedWords.Contains(username))
                                         {
-                                            
-                                            Guid myGuid = Guid.NewGuid();
-                                            Dictionary<string, string> dic = new Dictionary<string, string>
+
+                                            if (_waitForPair.Count == 0 && _pairDictionary.Find(d =>
+                                                    (d.ContainsKey("player1") && d["player1"] == username) ||
+                                                    (d.ContainsKey("player2") && d["player2"] == username)) == null)
                                             {
-                                                { "id", myGuid.ToString() }, { "player1", username }, { "player2", "" },
-                                                { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
-                                            };
-                                            lock (_multiLock)
-                                            {
+
+                                                Guid myGuid = Guid.NewGuid();
+                                                Dictionary<string, string> dic = new Dictionary<string, string>
+                                                {
+                                                    { "id", myGuid.ToString() }, { "player1", username },
+                                                    { "player2", "" },
+                                                    { "state", "wait" }, { "lastMovePlayer1", "" },
+                                                    { "lastMovePlayer2", "" }
+                                                };
+
                                                 _waitForPair.Add(username);
-                                                _pairDictionary.Add( dic);
+                                                _pairDictionary.Add(dic);
                                                 currentGameId[client.RemoteEndPoint.ToString()] = myGuid.ToString();
-                                            }
-                                            await sendMessage(200, JsonConvert.SerializeObject(dic), writer, stream);
-                                            
-                                        }else if (_waitForPair.Contains(username) || _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username)) != null)
-                                        {
-                                            Dictionary<string, string> foundDictionary = null;
-                                            lock (_multiLock)
-                                            {
-                                                foundDictionary = _pairDictionary.Find(d => (d.ContainsKey("player1") && d["player1"] == username) || (d.ContainsKey("player2") && d["player2"] == username));
+
+                                                sendMessage(200, JsonConvert.SerializeObject(dic), writer,
+                                                    stream);
 
                                             }
-                                            await sendMessage(200, JsonConvert.SerializeObject(foundDictionary), writer, stream);
+                                            else if (_waitForPair.Contains(username) || _pairDictionary.Find(d =>
+                                                         (d.ContainsKey("player1") && d["player1"] == username) ||
+                                                         (d.ContainsKey("player2") && d["player2"] == username)) !=
+                                                     null)
+                                            {
+                                                Dictionary<string, string> foundDictionary = null;
+                                                lock (_multiLock)
+                                                {
+                                                    foundDictionary = _pairDictionary.Find(d =>
+                                                        (d.ContainsKey("player1") && d["player1"] == username) ||
+                                                        (d.ContainsKey("player2") && d["player2"] == username));
+
+                                                }
+
+                                                sendMessage(200, JsonConvert.SerializeObject(foundDictionary),
+                                                    writer, stream);
+                                            }
+                                            else
+                                            {
+                                                Dictionary<string, string> foundDictionary = null;
+                                                lock (_multiLock)
+                                                {
+                                                    string player1 = _waitForPair[0];
+                                                    foundDictionary = _pairDictionary.Find(d =>
+                                                        d.ContainsKey("player1") && d["player1"] == player1);
+                                                    if (foundDictionary["player2"] == "")
+                                                    {
+                                                        _waitForPair.RemoveAt(0);
+                                                        if (foundDictionary != null)
+                                                        {
+                                                            foundDictionary["player2"] = username;
+                                                            foundDictionary["state"] = "progress";
+                                                        }
+                                                    }
+
+                                                    currentGameId[client.RemoteEndPoint.ToString()] =
+                                                        foundDictionary["id"];
+                                                }
+
+                                                sendMessage(200, JsonConvert.SerializeObject(foundDictionary),
+                                                    writer, stream);
+                                            }
                                         }
                                         else
                                         {
-                                            Dictionary<string, string> foundDictionary = null;
-                                            lock (_multiLock)
-                                            {
-                                                string player1 = _waitForPair[0];
-                                                foundDictionary = _pairDictionary.Find(d => d.ContainsKey("player1") && d["player1"] == player1);
-                                                if (foundDictionary["player2"] == "")
-                                                {
-                                                    _waitForPair.RemoveAt(0);
-                                                    if (foundDictionary != null)
-                                                    {
-                                                        foundDictionary["player2"] = username;
-                                                        foundDictionary["state"] = "progress";
-                                                    }
-                                                }
-                                                currentGameId[client.RemoteEndPoint.ToString()] = foundDictionary["id"];
-                                            }
-                                            await sendMessage(200, JsonConvert.SerializeObject(foundDictionary), writer, stream);
+                                            sendMessage(400, "Wrong username.", writer, stream);
                                         }
-                                    }
-                                    else
-                                    {
-                                        await sendMessage(400, "Wrong username.", writer, stream);
                                     }
                                 }
                                 else
@@ -325,14 +345,13 @@ namespace CS711_A2
                                         foundDictionary = _pairDictionary.Find(d =>
                                             d.ContainsKey("player1") &&
                                             (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    }
+                                    
 
-                                    if (foundDictionary != null)
-                                    {
-                                        if (foundDictionary["state"] == "progress")
+                                        if (foundDictionary != null)
                                         {
-                                            lock (_multiLock)
+                                            if (foundDictionary["state"] == "progress")
                                             {
+                                                
                                                 Console.WriteLine(move);
                                                 if (foundDictionary["player1"] == username)
                                                 {
@@ -342,22 +361,20 @@ namespace CS711_A2
                                                 {
                                                     foundDictionary["lastMovePlayer2"] = move;
                                                 }
+                                                
+                                                sendMessage(200, "OK!", writer, stream);
+                                                
                                             }
-                                            await sendMessage(200, "OK!", writer, stream);
-                                            
+                                            else
+                                            {
+                                                sendMessage(400, "Game not start!", writer, stream);
+                                            }
                                         }
                                         else
                                         {
-                                            await sendMessage(400, "Game not start!", writer, stream);
+                                            sendMessage(404, "Wrong username or ID", writer, stream);
                                         }
                                     }
-                                    else
-                                    {
-                                        await sendMessage(404, "Wrong username or ID", writer, stream);
-                                    }
-                                    
-                                    
-                                    
                                 }
                                 else
                                 {
@@ -378,13 +395,12 @@ namespace CS711_A2
                                         foundDictionary = _pairDictionary.Find(d =>
                                             d.ContainsKey("player1") &&
                                             (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    }
-                                    if (foundDictionary != null)
-                                    {
-                                        if (foundDictionary["state"] == "progress")
+                                    
+                                        if (foundDictionary != null)
                                         {
-                                            lock (_multiLock)
+                                            if (foundDictionary["state"] == "progress")
                                             {
+                                                
                                                 if (foundDictionary["player1"] == username)
                                                 {
                                                     move = foundDictionary["lastMovePlayer2"];
@@ -392,18 +408,19 @@ namespace CS711_A2
                                                 {
                                                     move = foundDictionary["lastMovePlayer1"];
                                                 }
+                                                    
                                                 
+                                                sendMessage(200, move, writer, stream);
                                             }
-                                            await sendMessage(200, move, writer, stream);
+                                            else
+                                            {
+                                                sendMessage(400, "Game not start!", writer, stream);
+                                            }
                                         }
                                         else
                                         {
-                                            await sendMessage(400, "Game not start!", writer, stream);
+                                            sendMessage(404, "Wrong username or ID", writer, stream);
                                         }
-                                    }
-                                    else
-                                    {
-                                        await sendMessage(404, "Wrong username or ID", writer, stream);
                                     }
                                 }
                                 else
@@ -424,11 +441,10 @@ namespace CS711_A2
                                         foundDictionary = _pairDictionary.Find(d =>
                                             d.ContainsKey("player1") &&
                                             (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    }
-                                    if (foundDictionary != null)
-                                    {
-                                        lock (_multiLock)
+
+                                        if (foundDictionary != null)
                                         {
+
                                             if (foundDictionary["player1"] == username)
                                             {
                                                 if (foundDictionary["player2"] != "")
@@ -437,14 +453,18 @@ namespace CS711_A2
                                                     Guid myGuid = Guid.NewGuid();
                                                     Dictionary<string, string> dic = new Dictionary<string, string>
                                                     {
-                                                        { "id", myGuid.ToString() }, { "player1", foundDictionary["player2"] }, { "player2", "" },
-                                                        { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                                        { "id", myGuid.ToString() },
+                                                        { "player1", foundDictionary["player2"] }, { "player2", "" },
+                                                        { "state", "wait" }, { "lastMovePlayer1", "" },
+                                                        { "lastMovePlayer2", "" }
                                                     };
-                                                    _pairDictionary.Add( dic);
+                                                    _pairDictionary.Add(dic);
                                                     currentGameId[client.RemoteEndPoint.ToString()] = myGuid.ToString();
                                                 }
+
                                                 _usedWords.Remove(foundDictionary["player1"]);
-                                            }else if(foundDictionary["player2"] == username)
+                                            }
+                                            else if (foundDictionary["player2"] == username)
                                             {
                                                 if (foundDictionary["player1"] != "")
                                                 {
@@ -452,30 +472,33 @@ namespace CS711_A2
                                                     Guid myGuid = Guid.NewGuid();
                                                     Dictionary<string, string> dic = new Dictionary<string, string>
                                                     {
-                                                        { "id", myGuid.ToString() }, { "player1", foundDictionary["player1"] }, { "player2", "" },
-                                                        { "state", "wait" }, { "lastMovePlayer1", "" }, { "lastMovePlayer2", "" }
+                                                        { "id", myGuid.ToString() },
+                                                        { "player1", foundDictionary["player1"] }, { "player2", "" },
+                                                        { "state", "wait" }, { "lastMovePlayer1", "" },
+                                                        { "lastMovePlayer2", "" }
                                                     };
-                                                    _pairDictionary.Add( dic);
+                                                    _pairDictionary.Add(dic);
                                                     currentGameId[client.RemoteEndPoint.ToString()] = myGuid.ToString();
                                                 }
+
                                                 _usedWords.Remove(foundDictionary["player2"]);
                                             }
 
                                             _pairDictionary.Remove(foundDictionary);
+
+                                            Console.WriteLine($"Client disconnected: {client.RemoteEndPoint}");
+                                            Console.WriteLine($"Game ID:{id} has been end!");
+                                            Console.WriteLine($"Player:{username} has been end!");
+                                            sendMessage(200, $"Game ID:{id} has been end!" +
+                                                                   $"Player:{username} has been end!", writer, stream);
+
+                                            break;
                                         }
-                                        Console.WriteLine($"Client disconnected: {client.RemoteEndPoint}");
-                                        Console.WriteLine($"Game ID:{id} has been end!");
-                                        Console.WriteLine($"Player:{username} has been end!");
-                                        await sendMessage(200, $"Game ID:{id} has been end!" +
-                                                               $"Player:{username} has been end!", writer, stream);
-                                            
-                                        break;
+                                        else
+                                        {
+                                            sendMessage(404, "Wrong username or ID!", writer, stream);
+                                        }
                                     }
-                                    else
-                                    {
-                                        await sendMessage(404, "Wrong username or ID!", writer, stream);
-                                    }
-                                    
                                 }
                                 else
                                 {
