@@ -109,6 +109,7 @@ function getUsername() {
             .then(text => {
                 document.getElementById("username").innerText = "Username:"+text;
                 _username = text
+                document.getElementById("status").innerText = ""
             })
             .catch(error => {
                 console.error(error);
@@ -140,7 +141,22 @@ function sendMyMove() {
         const now = new Date();
         boardState.push(now)
         fetch(`http://localhost:8080/mymove?player=${_username}&id=${_gameId}&move=${JSON.stringify(boardState)}`)
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404){
+                        document.getElementById("status").innerText = "Player exits game."
+                        document.getElementById("username").innerText = "";
+                        _username=null;
+                        _gameId=null;
+                        _pairCheck = false;
+                        _Player = ""
+                        _Dargava=null;
+                        document.getElementById("theirMove").style.backgroundColor='#f0f0f0'
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(text => {
                 document.getElementById("message").innerText="Move has been send!"
                 setTimeout(function() {
@@ -160,7 +176,22 @@ function getTheirMove() {
     if(_username && _gameId){
         if (!_Dargava){
             fetch(`http://localhost:8080/theirmove?player=${_username}&id=${_gameId}`)
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 404){
+                            document.getElementById("status").innerText = "Player exits game."
+                            document.getElementById("username").innerText = "";
+                            _username=null;
+                            _gameId=null;
+                            _pairCheck = false;
+                            _Player = ""
+                            _Dargava=null;
+                            document.getElementById("theirMove").style.backgroundColor='#f0f0f0'
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
                 .then(boardState => {
                     if (boardState !== ""){
                         boardState = JSON.parse(boardState);
@@ -191,7 +222,6 @@ function getTheirMove() {
                                 }
                             }
                         }
-
                     }
 
                 })
@@ -243,7 +273,22 @@ function pairMe() {
 function quit() {
     if(_username && _gameId){
         fetch(`http://localhost:8080/quit?player=${_username}&id=${_gameId}`)
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404){
+                        document.getElementById("status").innerText = "Player exits game."
+                        document.getElementById("username").innerText = "";
+                        _username=null;
+                        _gameId=null;
+                        _pairCheck = false;
+                        _Player = ""
+                        _Dargava=null;
+                        document.getElementById("theirMove").style.backgroundColor='#f0f0f0'
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(text => {
                 document.getElementById("status").innerText = "Log out successful"
                 document.getElementById("username").innerText = "";
@@ -252,6 +297,7 @@ function quit() {
                 _pairCheck = false;
                 _Player = ""
                 _Dargava=null;
+                document.getElementById("theirMove").style.backgroundColor='#f0f0f0'
             })
             .catch(error => {
                 console.error(error);
