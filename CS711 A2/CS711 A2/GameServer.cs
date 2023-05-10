@@ -143,23 +143,36 @@ namespace CS711_A2
                 {
                     StreamReader reader = new StreamReader(stream);
                     StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
-                    Timer timer = new Timer(CloseConnection, client, TimeSpan.FromSeconds(600), TimeSpan.Zero);
+                    //Timer timer = new Timer(CloseConnection, client, TimeSpan.FromSeconds(600), TimeSpan.Zero);
 
                     while (true)
                     {
                         // writer.WriteLine("Access-Control-Allow-Origin: *");
                         // writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
                         // writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
-                        string requestLine = await reader.ReadLineAsync();
                         
+                        // char[] buffer = new char[1024];
+                        // int offset = 0;
+                        // int count = buffer.Length;
+                        // int charsRead = await reader.ReadAsync(buffer, offset, count);
+                        // if (charsRead == 0)
+                        // {
+                        //     CloseConnection(client);
+                        //     break;
+                        // }
+                        // Console.WriteLine(charsRead);
+                        // string requestLine = new string(buffer, 0, charsRead);
+                        // Console.WriteLine(requestLine);
+                        string requestLine = await reader.ReadLineAsync();
                         if (requestLine == null)
                         {
-                            requestLine = "";
+                            CloseConnection(client);
+                            break;
                         }
-                        else
-                        {
-                            timer.Change(TimeSpan.FromSeconds(300), TimeSpan.Zero);
-                        }
+                        // else
+                        // {
+                        //     //timer.Change(TimeSpan.FromSeconds(300), TimeSpan.Zero);
+                        // }
                         
                         int requestStringIndexGet = requestLine.ToUpper().IndexOf("GET");
                         int requestStringIndexPost = requestLine.ToUpper().IndexOf("POST");
@@ -199,11 +212,11 @@ namespace CS711_A2
                                 string re = $"Client: {client.RemoteEndPoint.ToString()} ({currentTime.ToString()})";
                                 await sendMessage(200, re, writer, stream);
                             }
-                            if (path.StartsWith("/version"))
+                            else if (path.StartsWith("/version"))
                             {
                                 await sendMessage(200, "08/05/2023", writer, stream);
                             }
-                            if (path.StartsWith("/favicon.ico"))
+                            else if (path.StartsWith("/favicon.ico"))
                             {
                                 try
                                 {
@@ -224,7 +237,7 @@ namespace CS711_A2
                                     await sendMessage(404, "Favicon not found.", writer, stream);
                                 }
                             }
-                            if (path.StartsWith("/register"))
+                            else if (path.StartsWith("/register"))
                             {
                                 
                                 Random random = new Random();
@@ -333,7 +346,7 @@ namespace CS711_A2
                             }
                             else if (path.StartsWith("/mymove"))
                             {
-                                Console.WriteLine(JsonConvert.SerializeObject(parameters));
+                                //Console.WriteLine(JsonConvert.SerializeObject(parameters));
                                 if (parameters.ContainsKey("player") && parameters.ContainsKey("id") && parameters.ContainsKey("move"))
                                 {
                                     string username = parameters["player"];
