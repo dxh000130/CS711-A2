@@ -5,6 +5,23 @@ C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.cs
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.CoreCompileInputs.cache
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.exe
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711_A2.pdb
-C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Newtonsoft.Json.dll
-C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Newtonsoft.Json.xml
 C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\obj\Debug\CS711 A2.csproj.CopyComplete
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\CS711_A2.exe.config
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Buffers.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Memory.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Text.Encodings.Web.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Text.Json.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Threading.Tasks.Extensions.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.ValueTuple.dll
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Buffers.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Memory.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Numerics.Vectors.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Text.Encodings.Web.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Text.Json.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\dxh00\Documents\GitHub\CS711-A2\CS711 A2\CS711 A2\bin\Debug\System.ValueTuple.xml

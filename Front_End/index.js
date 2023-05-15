@@ -319,3 +319,8 @@ setInterval(function() {
     }
 }, 1000);
 
+window.onbeforeunload = function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'http://localhost:8080/quit', false);  // false makes the request synchronous
+    xhr.send();
+}

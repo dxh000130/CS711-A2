@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace CS711_A2
@@ -150,7 +150,7 @@ namespace CS711_A2
                         // writer.WriteLine("Access-Control-Allow-Origin: *");
                         // writer.WriteLine("Access-Control-Allow-Methods: GET, POST, OPTIONS");
                         // writer.WriteLine("Access-Control-Allow-Headers: Content-Type, Accept");
-                        
+
                         // char[] buffer = new char[1024];
                         // int offset = 0;
                         // int count = buffer.Length;
@@ -173,13 +173,14 @@ namespace CS711_A2
                         // {
                         //     //timer.Change(TimeSpan.FromSeconds(300), TimeSpan.Zero);
                         // }
-                        
+
                         int requestStringIndexGet = requestLine.ToUpper().IndexOf("GET");
                         int requestStringIndexPost = requestLine.ToUpper().IndexOf("POST");
                         if (requestStringIndexGet > 0)
                         {
                             requestLine = requestLine.Substring(requestStringIndexGet);
-                        }else if (requestStringIndexPost > 0)
+                        }
+                        else if (requestStringIndexPost > 0)
                         {
                             requestLine = requestLine.Substring(requestStringIndexPost);
                         }
@@ -192,7 +193,7 @@ namespace CS711_A2
                             method = tokens[0].ToUpper();
                             path = tokens[1].ToLower();
                         }
-                        
+
                         string queryString = "";
                         int queryStringIndex = path.IndexOf('?');
                         if (queryStringIndex >= 0)
@@ -230,7 +231,7 @@ namespace CS711_A2
                                     writer.WriteLine();
                                     await writer.FlushAsync();
                                     await stream.WriteAsync(iconBytes, 0, iconBytes.Length);
-                                    
+
                                 }
                                 catch (FileNotFoundException)
                                 {
@@ -239,7 +240,7 @@ namespace CS711_A2
                             }
                             else if (path.StartsWith("/register"))
                             {
-                                
+
                                 Random random = new Random();
                                 int randomIndex = random.Next(_englishWords.Length);
                                 string randomUsername = _englishWords[randomIndex];
@@ -250,12 +251,13 @@ namespace CS711_A2
                                         randomIndex = random.Next(_englishWords.Length);
                                         randomUsername = _englishWords[randomIndex];
                                     }
+
                                     _usedWords.Add(randomUsername);
                                     currentPlayer[client.RemoteEndPoint.ToString()] = randomUsername;
                                 }
-                                
+
                                 await sendMessage(200, randomUsername, writer, stream);
-                                
+
                             }
                             else if (path.StartsWith("/pairme"))
                             {
@@ -285,7 +287,7 @@ namespace CS711_A2
                                                 _pairDictionary.Add(dic);
                                                 currentGameId[client.RemoteEndPoint.ToString()] = myGuid.ToString();
 
-                                                sendMessage(200, JsonConvert.SerializeObject(dic), writer,
+                                                sendMessage(200, JsonSerializer.Serialize(dic), writer,
                                                     stream);
 
                                             }
@@ -303,7 +305,7 @@ namespace CS711_A2
 
                                                 }
 
-                                                sendMessage(200, JsonConvert.SerializeObject(foundDictionary),
+                                                sendMessage(200, JsonSerializer.Serialize(foundDictionary),
                                                     writer, stream);
                                             }
                                             else
@@ -328,7 +330,7 @@ namespace CS711_A2
                                                         foundDictionary["id"];
                                                 }
 
-                                                sendMessage(200, JsonConvert.SerializeObject(foundDictionary),
+                                                sendMessage(200, JsonSerializer.Serialize(foundDictionary),
                                                     writer, stream);
                                             }
                                         }
@@ -342,12 +344,13 @@ namespace CS711_A2
                                 {
                                     await sendMessage(400, "Please input parameters [player].", writer, stream);
                                 }
-                                
+
                             }
                             else if (path.StartsWith("/mymove"))
                             {
-                                //Console.WriteLine(JsonConvert.SerializeObject(parameters));
-                                if (parameters.ContainsKey("player") && parameters.ContainsKey("id") && parameters.ContainsKey("move"))
+                                //Console.WriteLine(JsonSerializer.Serialize(parameters));
+                                if (parameters.ContainsKey("player") && parameters.ContainsKey("id") &&
+                                    parameters.ContainsKey("move"))
                                 {
                                     string username = parameters["player"];
                                     string id = parameters["id"];
@@ -358,13 +361,13 @@ namespace CS711_A2
                                         foundDictionary = _pairDictionary.Find(d =>
                                             d.ContainsKey("player1") &&
                                             (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    
+
 
                                         if (foundDictionary != null)
                                         {
                                             if (foundDictionary["state"] == "progress")
                                             {
-                                                
+
                                                 Console.WriteLine(move);
                                                 if (foundDictionary["player1"] == username)
                                                 {
@@ -374,9 +377,9 @@ namespace CS711_A2
                                                 {
                                                     foundDictionary["lastMovePlayer2"] = move;
                                                 }
-                                                
+
                                                 sendMessage(200, "OK!", writer, stream);
-                                                
+
                                             }
                                             else
                                             {
@@ -391,38 +394,40 @@ namespace CS711_A2
                                 }
                                 else
                                 {
-                                    await sendMessage(400, "Please input parameters [player, id, move].", writer, stream);
+                                    await sendMessage(400, "Please input parameters [player, id, move].", writer,
+                                        stream);
                                 }
                             }
                             else if (path.StartsWith("/theirmove"))
                             {
                                 if (parameters.ContainsKey("player") && parameters.ContainsKey("id"))
                                 {
-                                    
+
                                     string username = parameters["player"];
                                     string id = parameters["id"];
-                                    string move="";
+                                    string move = "";
                                     Dictionary<string, string> foundDictionary;
                                     lock (_multiLock)
                                     {
                                         foundDictionary = _pairDictionary.Find(d =>
                                             d.ContainsKey("player1") &&
                                             (d["player1"] == username || d["player2"] == username) && d["id"] == id);
-                                    
+
                                         if (foundDictionary != null)
                                         {
                                             if (foundDictionary["state"] == "progress")
                                             {
-                                                
+
                                                 if (foundDictionary["player1"] == username)
                                                 {
                                                     move = foundDictionary["lastMovePlayer2"];
-                                                }else if(foundDictionary["player2"] == username)
+                                                }
+                                                else if (foundDictionary["player2"] == username)
                                                 {
                                                     move = foundDictionary["lastMovePlayer1"];
                                                 }
-                                                    
-                                                
+
+
                                                 sendMessage(200, move, writer, stream);
                                             }
                                             else
@@ -503,7 +508,7 @@ namespace CS711_A2
                                             Console.WriteLine($"Game ID:{id} has been end!");
                                             Console.WriteLine($"Player:{username} has been end!");
                                             sendMessage(200, $"Game ID:{id} has been end!" +
-                                                                   $"Player:{username} has been end!", writer, stream);
+                                                             $"Player:{username} has been end!", writer, stream);
 
                                             break;
                                         }
@@ -522,17 +527,23 @@ namespace CS711_A2
                             {
                                 await sendMessage(400, "Invalid request.", writer, stream);
                             }
-                            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.RemoteEndPoint} for {path}");
+
+                            Console.WriteLine(
+                                $"Thread {Thread.CurrentThread.ManagedThreadId} sent response to {client.RemoteEndPoint} for {path}");
                         }
                     }
-                    
+
                 }
+            }
+            catch (SocketException ex)
+            {
+                CloseConnection(client);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
             }
-            
+
         }
     }
     public static Dictionary<string, string> Parse(string queryString)
